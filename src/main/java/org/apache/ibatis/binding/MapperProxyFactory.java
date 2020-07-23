@@ -24,11 +24,18 @@ import org.apache.ibatis.binding.MapperProxy.MapperMethodInvoker;
 import org.apache.ibatis.session.SqlSession;
 
 /**
+ * mapper代理工厂(使用jdk动态代理:只能使用接口生成实例对象)
+ * 用来创建mapper接口的实例对象
  * @author Lasse Voss
  */
 public class MapperProxyFactory<T> {
 
   private final Class<T> mapperInterface;
+
+  /**
+   * MapperMethodInvoker将jdk动态代理处理方法延迟到处理整个mapper对象
+   * jdk 定义了可以动态
+   */
   private final Map<Method, MapperMethodInvoker> methodCache = new ConcurrentHashMap<>();
 
   public MapperProxyFactory(Class<T> mapperInterface) {
@@ -49,7 +56,9 @@ public class MapperProxyFactory<T> {
   }
 
   public T newInstance(SqlSession sqlSession) {
+    // 创建一个mapper代理类
     final MapperProxy<T> mapperProxy = new MapperProxy<>(sqlSession, mapperInterface, methodCache);
+    // 通过代理类创建一个mapper的实例对象
     return newInstance(mapperProxy);
   }
 

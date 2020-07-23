@@ -27,19 +27,27 @@ import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.SqlSession;
 
 /**
+ * mapper注册器
  * @author Clinton Begin
  * @author Eduardo Macarron
  * @author Lasse Voss
  */
 public class MapperRegistry {
 
-  private final Configuration config;
-  private final Map<Class<?>, MapperProxyFactory<?>> knownMappers = new HashMap<>();
+  private final Configuration config; /* 配置对象 */
+  private final Map<Class<?>, MapperProxyFactory<?>> knownMappers = new HashMap<>(); /* 已知的mapper,key为mapper类对象(mapper接口对象)，value为mapper的代理工厂，通过代理工厂获取实体类对象 */
 
   public MapperRegistry(Configuration config) {
     this.config = config;
   }
 
+  /**
+   *
+   * @param type
+   * @param sqlSession https://www.cnblogs.com/jian0110/p/9452592.html
+   * @param <T>
+   * @return
+   */
   @SuppressWarnings("unchecked")
   public <T> T getMapper(Class<T> type, SqlSession sqlSession) {
     final MapperProxyFactory<T> mapperProxyFactory = (MapperProxyFactory<T>) knownMappers.get(type);
@@ -47,6 +55,7 @@ public class MapperRegistry {
       throw new BindingException("Type " + type + " is not known to the MapperRegistry.");
     }
     try {
+      // 通过代理工厂为mapper接口创建实例对象，这个mapper实例对象内的所有方法都被动态创建调用
       return mapperProxyFactory.newInstance(sqlSession);
     } catch (Exception e) {
       throw new BindingException("Error getting mapper instance. Cause: " + e, e);

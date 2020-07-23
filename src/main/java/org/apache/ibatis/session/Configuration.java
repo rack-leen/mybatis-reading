@@ -166,29 +166,30 @@ public class Configuration {
    *************************************************************************/
 
   /**
-   * 下面
-   */
-  /**
    * StrictMap是一个继承自hashMap的一个Map,实现了检测冲突，如果两个值产生冲突，就会打印出错误信息
    */
   protected final Map<String, MappedStatement> mappedStatements = new StrictMap<MappedStatement>("Mapped Statements collection")
       .conflictMessageProducer((savedValue, targetValue) ->
-          ". please check " + savedValue.getResource() + " and " + targetValue.getResource()); /* 表示一个sql语句对象 */
-  protected final Map<String, Cache> caches = new StrictMap<>("Caches collection"); /* 表示缓存 */
-  protected final Map<String, ResultMap> resultMaps = new StrictMap<>("Result Maps collection"); /* 表示结果集 */
-  protected final Map<String, ParameterMap> parameterMaps = new StrictMap<>("Parameter Maps collection"); /* 表示参数集 */
-  protected final Map<String, KeyGenerator> keyGenerators = new StrictMap<>("Key Generators collection"); /* key生成器 */
+          ". please check " + savedValue.getResource() + " and " + targetValue.getResource()); /* 创建一个key,表示一个sql语句对象, */
+  protected final Map<String, Cache> caches = new StrictMap<>("Caches collection"); /* 创建一个key,表示缓存 */
+  protected final Map<String, ResultMap> resultMaps = new StrictMap<>("Result Maps collection"); /* 创建一个key,表示结果集 */
+  protected final Map<String, ParameterMap> parameterMaps = new StrictMap<>("Parameter Maps collection"); /* 创建一个key,表示参数集 */
+  protected final Map<String, KeyGenerator> keyGenerators = new StrictMap<>("Key Generators collection"); /* 创建一个key,表示key生成器 */
 
   protected final Set<String> loadedResources = new HashSet<>(); /* 加载资源 */
-  protected final Map<String, XNode> sqlFragments = new StrictMap<>("XML fragments parsed from previous mappers");
+  protected final Map<String, XNode> sqlFragments = new StrictMap<>("XML fragments parsed from previous mappers"); /* 创建一个key,表示可复用的sql片段 */
 
   /**
-   * 各种结果集合
+   *  mapper.xml文件中的各种xml节点集合
+   *  1. sql语句节点集合
+   *  2. 缓存引用节点集合
+   *  3. 结果集节点集合
+   *  4. 方法节点集合
    */
-  protected final Collection<XMLStatementBuilder> incompleteStatements = new LinkedList<>();
-  protected final Collection<CacheRefResolver> incompleteCacheRefs = new LinkedList<>();
-  protected final Collection<ResultMapResolver> incompleteResultMaps = new LinkedList<>();
-  protected final Collection<MethodResolver> incompleteMethods = new LinkedList<>();
+  protected final Collection<XMLStatementBuilder> incompleteStatements = new LinkedList<>(); /* 未完成的sql语句,也就是xml格式的语句 */
+  protected final Collection<CacheRefResolver> incompleteCacheRefs = new LinkedList<>(); /* 未完成的缓存引用 xml中的cache-ref节点，用来在不同mapper中共享同一个缓存*/
+  protected final Collection<ResultMapResolver> incompleteResultMaps = new LinkedList<>(); /* 未完成的结果集合 */
+  protected final Collection<MethodResolver> incompleteMethods = new LinkedList<>(); /* 未完成的方法 */
 
   /*
    * A map holds cache-ref relationship. The key is the namespace that
@@ -202,6 +203,12 @@ public class Configuration {
     this.environment = environment;
   }
 
+  /**
+   * mybatis为必须的类注册了别名，我们可以直接使用别名，不需要再写全类名
+   * typeAliasRegistry类型别名注册器提供了两个注册别名的方法
+   *    1. 注册别名
+   *    2. 将整个包下的类一起注册别名
+   */
   public Configuration() {
     typeAliasRegistry.registerAlias("JDBC", JdbcTransactionFactory.class);
     typeAliasRegistry.registerAlias("MANAGED", ManagedTransactionFactory.class);
@@ -248,6 +255,10 @@ public class Configuration {
     return logImpl;
   }
 
+  /**
+   * 设置需要用到的日志实现
+   * @param logImpl
+   */
   public void setLogImpl(Class<? extends Log> logImpl) {
     if (logImpl != null) {
       this.logImpl = logImpl;
@@ -259,6 +270,10 @@ public class Configuration {
     return this.vfsImpl;
   }
 
+  /**
+   * 设置vfs文件系统实例
+   * @param vfsImpl
+   */
   public void setVfsImpl(Class<? extends VFS> vfsImpl) {
     if (vfsImpl != null) {
       this.vfsImpl = vfsImpl;
@@ -268,7 +283,7 @@ public class Configuration {
 
   /**
    * Gets an applying type when omit a type on sql provider annotation(e.g. {@link org.apache.ibatis.annotations.SelectProvider}).
-   *
+   * SelectProvider sql提供者类，SelectProvider(type=BaseUserProvider.class,method="selectUserById") type为提供者类,method为提供者类中提供sql的方法
    * @return the default type for sql provider annotation
    * @since 3.5.6
    */
@@ -278,7 +293,7 @@ public class Configuration {
 
   /**
    * Sets an applying type when omit a type on sql provider annotation(e.g. {@link org.apache.ibatis.annotations.SelectProvider}).
-   *
+   * defaultSqlProviderType属性是接收SelectProvider注解的type，获取sql的提供者类
    * @param defaultSqlProviderType
    *          the default type for sql provider annotation
    * @since 3.5.6
@@ -609,7 +624,7 @@ public class Configuration {
 
   /**
    * Gets the interceptors.
-   *
+   * 获取所有的拦截器
    * @return the interceptors
    * @since 3.2.2
    */
@@ -621,6 +636,10 @@ public class Configuration {
     return languageRegistry;
   }
 
+  /**
+   * 设置默认的脚本语言(xml)
+   * @param driver
+   */
   public void setDefaultScriptingLanguage(Class<? extends LanguageDriver> driver) {
     if (driver == null) {
       driver = XMLLanguageDriver.class;
@@ -659,47 +678,116 @@ public class Configuration {
     return getDefaultScriptingLanguageInstance();
   }
 
+  /**
+   * 元数据对象
+   * @param object
+   * @return
+   */
   public MetaObject newMetaObject(Object object) {
     return MetaObject.forObject(object, objectFactory, objectWrapperFactory, reflectorFactory);
   }
 
+  /************************************************************
+   * mybatis的三个核心处理器
+   * 1. ParameterHandler 对输入sql参数进行处理
+   * 2. ResultSetHandler 对sql执行结果进行处理
+   * 3. StatementHandler 对生成的sql语句进行处理
+   ************************************************************/
+  /**
+   * 参数处理器
+   * @param mappedStatement sql语句对象
+   * @param parameterObject 参数对象
+   * @param boundSql 绑定的sql
+   * @return
+   */
   public ParameterHandler newParameterHandler(MappedStatement mappedStatement, Object parameterObject, BoundSql boundSql) {
+    /* 获取一个xml驱动，从mapper.xml中创建一个参数处理器 */
     ParameterHandler parameterHandler = mappedStatement.getLang().createParameterHandler(mappedStatement, parameterObject, boundSql);
+    /* 拦截参数处理器，注入参数 */
     parameterHandler = (ParameterHandler) interceptorChain.pluginAll(parameterHandler);
     return parameterHandler;
   }
 
-  public ResultSetHandler newResultSetHandler(Executor executor, MappedStatement mappedStatement, RowBounds rowBounds, ParameterHandler parameterHandler,
-      ResultHandler resultHandler, BoundSql boundSql) {
+  /**
+   * 结果集处理器
+   * 参考：jianshu.com/p/b82d0a95b2f3
+   * @param executor sql执行器
+   * @param mappedStatement sql在mybatis中映射的语句对象
+   * @param rowBounds 数据行绑定
+   * @param parameterHandler 参数处理器
+   * @param resultHandler 结果处理器
+   * @param boundSql sql绑定
+   * @return
+   */
+  public ResultSetHandler newResultSetHandler(Executor executor,
+                                              MappedStatement mappedStatement,
+                                              RowBounds rowBounds,
+                                              ParameterHandler parameterHandler,
+                                              ResultHandler resultHandler,
+                                              BoundSql boundSql) {
+    /* 创建一个默认结果集处理器 */
     ResultSetHandler resultSetHandler = new DefaultResultSetHandler(executor, mappedStatement, parameterHandler, resultHandler, boundSql, rowBounds);
+    /* 设置拦截器拦截结果集 */
     resultSetHandler = (ResultSetHandler) interceptorChain.pluginAll(resultSetHandler);
     return resultSetHandler;
   }
 
-  public StatementHandler newStatementHandler(Executor executor, MappedStatement mappedStatement, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
+  /**
+   * sql语句处理器
+   * @param executor sql语句执行器
+   * @param mappedStatement sql在mybatis中映射的语句对象
+   * @param parameterObject 参数对象
+   * @param rowBounds 数据行绑定
+   * @param resultHandler 结果集处理器
+   * @param boundSql sql绑定
+   * @return
+   */
+  public StatementHandler newStatementHandler(Executor executor,
+                                              MappedStatement mappedStatement,
+                                              Object parameterObject,
+                                              RowBounds rowBounds,
+                                              ResultHandler resultHandler,
+                                              BoundSql boundSql) {
+    /* RoutingStatementHandler sql语句处理器，会根据路由选择需要的语句处理器 */
     StatementHandler statementHandler = new RoutingStatementHandler(executor, mappedStatement, parameterObject, rowBounds, resultHandler, boundSql);
+    /* 设置拦截器拦截sql语句 */
     statementHandler = (StatementHandler) interceptorChain.pluginAll(statementHandler);
     return statementHandler;
   }
 
+  /**
+   * sql语句执行器
+   * @param transaction 数据库事务
+   * @return
+   */
   public Executor newExecutor(Transaction transaction) {
+    /* 使用默认执行器 SIMPLE */
     return newExecutor(transaction, defaultExecutorType);
   }
 
+  /**
+   * 可以选择执行器类型的sql语句执行器
+   * @param transaction 数据库事务
+   * @param executorType 执行器类型
+   * @return
+   */
   public Executor newExecutor(Transaction transaction, ExecutorType executorType) {
+    /* 如果输入执行器类型参数为空，就使用SIMPLE执行器类型 */
     executorType = executorType == null ? defaultExecutorType : executorType;
     executorType = executorType == null ? ExecutorType.SIMPLE : executorType;
     Executor executor;
-    if (ExecutorType.BATCH == executorType) {
+
+    if (ExecutorType.BATCH == executorType) { /* 批量操作 */
       executor = new BatchExecutor(this, transaction);
-    } else if (ExecutorType.REUSE == executorType) {
+    } else if (ExecutorType.REUSE == executorType) { /* sql重用 */
       executor = new ReuseExecutor(this, transaction);
     } else {
       executor = new SimpleExecutor(this, transaction);
     }
-    if (cacheEnabled) {
+    if (cacheEnabled) { /* 如果设置了缓存(使用的是二级缓存，作用域为namespace) */
       executor = new CachingExecutor(executor);
     }
+    /* 对执行器进行拦截操作 */
     executor = (Executor) interceptorChain.pluginAll(executor);
     return executor;
   }
@@ -744,90 +832,189 @@ public class Configuration {
     return caches.containsKey(id);
   }
 
+  /********************************************
+   * mybatis维护了几个全局集合
+   * 1. resultMaps 结果集，存放所有sql获取到的数据集
+   * 2. parameterMaps 参数集合， 存放所有的参数集
+   * 3. mappedStatements sql语句对象集, 存放所有namespace域中存在的sql语句对象
+   ********************************************/
+
+  /********************************结果集*************************************/
+  /**
+   * 将rm结果集加入全局结果集map
+   * @param rm
+   */
   public void addResultMap(ResultMap rm) {
     resultMaps.put(rm.getId(), rm);
     checkLocallyForDiscriminatedNestedResultMaps(rm);
     checkGloballyForDiscriminatedNestedResultMaps(rm);
   }
 
+  /**
+   * 从全局结果集中获取所有的结果集名
+   * @return
+   */
   public Collection<String> getResultMapNames() {
     return resultMaps.keySet();
   }
 
+  /**
+   * 从全局结果集获取所有的结果集
+   * @return
+   */
   public Collection<ResultMap> getResultMaps() {
     return resultMaps.values();
   }
 
+  /**
+   * 通过结果集名从全局结果集获取对应的结果集
+   * @param id
+   * @return
+   */
   public ResultMap getResultMap(String id) {
     return resultMaps.get(id);
   }
 
+  /**
+   * 通过结果集名判断全局结果集中是否存在对应的结果集
+   * @param id
+   * @return
+   */
   public boolean hasResultMap(String id) {
     return resultMaps.containsKey(id);
   }
 
+  /********************************参数集*************************************/
+  /**
+   * 将一个参数集加入全局参数集
+   * @param pm
+   */
   public void addParameterMap(ParameterMap pm) {
     parameterMaps.put(pm.getId(), pm);
   }
 
+  /**
+   * 从全局参数集获取参数集的key
+   * @return
+   */
   public Collection<String> getParameterMapNames() {
     return parameterMaps.keySet();
   }
 
+  /**
+   * 从全局参数集中获取参数集
+   * @return
+   */
   public Collection<ParameterMap> getParameterMaps() {
     return parameterMaps.values();
   }
 
+  /**
+   * 通过参数集的key从全局参数集获取对应参数集
+   * @param id
+   * @return
+   */
   public ParameterMap getParameterMap(String id) {
     return parameterMaps.get(id);
   }
 
+  /**
+   * 判断全局参数集中是否存在以id为key的参数集
+   * @param id
+   * @return
+   */
   public boolean hasParameterMap(String id) {
     return parameterMaps.containsKey(id);
   }
 
+  /********************************sql语句对象集*************************************/
+  /**
+   * 将sql语句对象加入全局sql语句对象集合
+   * @param ms
+   */
   public void addMappedStatement(MappedStatement ms) {
     mappedStatements.put(ms.getId(), ms);
   }
 
+  /**
+   *
+   * @return
+   */
   public Collection<String> getMappedStatementNames() {
     buildAllStatements();
     return mappedStatements.keySet();
   }
 
+  /**
+   * 从全局sql语句对象集合中获取所有sql语句对象
+   * @return
+   */
   public Collection<MappedStatement> getMappedStatements() {
     buildAllStatements();
     return mappedStatements.values();
   }
 
+
+  /**
+   * 获取未完成的sql语句,就是xml格式的sql语句
+   * @return
+   */
   public Collection<XMLStatementBuilder> getIncompleteStatements() {
     return incompleteStatements;
   }
 
+  /**
+   * 将mapper中的各个xml格式的sql语句加入incompleteStatements
+   * @param incompleteStatement
+   */
   public void addIncompleteStatement(XMLStatementBuilder incompleteStatement) {
     incompleteStatements.add(incompleteStatement);
   }
 
+  /**
+   * 获取未完成的缓存引用(xml格式的)
+   * @return
+   */
   public Collection<CacheRefResolver> getIncompleteCacheRefs() {
     return incompleteCacheRefs;
   }
 
+  /**
+   * 将xml格式缓存引用加入全局缓存引用集合中
+   * @param incompleteCacheRef
+   */
   public void addIncompleteCacheRef(CacheRefResolver incompleteCacheRef) {
     incompleteCacheRefs.add(incompleteCacheRef);
   }
 
+  /**
+   * 获取未完成的xml格式的结果集
+   * @return
+   */
   public Collection<ResultMapResolver> getIncompleteResultMaps() {
     return incompleteResultMaps;
   }
 
+  /**
+   * 将未完成解析的结果集加入全局集合
+   * @param resultMapResolver
+   */
   public void addIncompleteResultMap(ResultMapResolver resultMapResolver) {
     incompleteResultMaps.add(resultMapResolver);
   }
 
+  /**
+   * 未完成解析的方法加入全局方法集合
+   * @param builder
+   */
   public void addIncompleteMethod(MethodResolver builder) {
     incompleteMethods.add(builder);
   }
 
+  /**
+   * 从全局方法集合中获取未完成解析的方法集合
+   * @return
+   */
   public Collection<MethodResolver> getIncompleteMethods() {
     return incompleteMethods;
   }
@@ -837,51 +1024,101 @@ public class Configuration {
   }
 
   public MappedStatement getMappedStatement(String id, boolean validateIncompleteStatements) {
+    // 如果是未完成语句，就将未完成语句构建为完整sql语句
     if (validateIncompleteStatements) {
       buildAllStatements();
     }
     return mappedStatements.get(id);
   }
 
+  /**
+   * sql语句片段(mapper中的一些公用的sql片段的xml节点)
+   * @return
+   */
   public Map<String, XNode> getSqlFragments() {
     return sqlFragments;
   }
 
+  /**
+   * 拦截器加入集合
+   * @param interceptor
+   */
   public void addInterceptor(Interceptor interceptor) {
     interceptorChain.addInterceptor(interceptor);
   }
 
+  /****************************************************************
+   *  mapper加入集合
+   *  和注册对象类型差不多
+   ****************************************************************/
+  /**
+   * 1. 将一个包下的所有相同类型的mapper对象放入mapper集合中
+   * @param packageName
+   * @param superType
+   */
   public void addMappers(String packageName, Class<?> superType) {
     mapperRegistry.addMappers(packageName, superType);
   }
 
+  /**
+   * 2. 将一个包下的所有默认类型(Object)的mapper对象放入mapper集合中
+   * @param packageName
+   */
   public void addMappers(String packageName) {
     mapperRegistry.addMappers(packageName);
   }
 
+  /**
+   * 3. 将一个mapper对象放入集合中
+   * @param type
+   * @param <T>
+   */
   public <T> void addMapper(Class<T> type) {
     mapperRegistry.addMapper(type);
   }
 
+  /**
+   * 通过对象类型和sqlSession从集合中获取mapper对象
+   * @param type
+   * @param sqlSession
+   * @param <T>
+   * @return
+   */
   public <T> T getMapper(Class<T> type, SqlSession sqlSession) {
     return mapperRegistry.getMapper(type, sqlSession);
   }
 
+  /**
+   * 查询集合中是否还包含type的mapper对象
+   * @param type
+   * @return
+   */
   public boolean hasMapper(Class<?> type) {
     return mapperRegistry.hasMapper(type);
   }
 
+  /**
+   * 查询sql语句对象集合中是否包含statementName对应的sql语句对象
+   * @param statementName
+   * @return
+   */
   public boolean hasStatement(String statementName) {
     return hasStatement(statementName, true);
   }
 
   public boolean hasStatement(String statementName, boolean validateIncompleteStatements) {
+    // 如果还没有完全转化成完整sql语句，就先转换
     if (validateIncompleteStatements) {
       buildAllStatements();
     }
     return mappedStatements.containsKey(statementName);
   }
 
+  /**
+   * 将缓存引用增加到集合
+   * @param namespace
+   * @param referencedNamespace
+   */
   public void addCacheRef(String namespace, String referencedNamespace) {
     cacheRefMap.put(namespace, referencedNamespace);
   }
@@ -890,14 +1127,18 @@ public class Configuration {
    * Parses all the unprocessed statement nodes in the cache. It is recommended
    * to call this method once all the mappers are added as it provides fail-fast
    * statement validation.
+   * 解析缓存中未处理的sql语句节点，建议在所有mapper都添加到缓存后再调用这个方法，因为这个方法提供了错误语句校验
    */
   protected void buildAllStatements() {
+    // 解析sql语句并返回结果集
     parsePendingResultMaps();
+    // 解析完缓存引用后，移除所有缓存引用
     if (!incompleteCacheRefs.isEmpty()) {
       synchronized (incompleteCacheRefs) {
         incompleteCacheRefs.removeIf(x -> x.resolveCacheRef() != null);
       }
     }
+    // 解析完所有未处理的语句节点后移除
     if (!incompleteStatements.isEmpty()) {
       synchronized (incompleteStatements) {
         incompleteStatements.removeIf(x -> {
@@ -906,6 +1147,7 @@ public class Configuration {
         });
       }
     }
+    // 解析所有节点上的关联方法后移除
     if (!incompleteMethods.isEmpty()) {
       synchronized (incompleteMethods) {
         incompleteMethods.removeIf(x -> {
@@ -916,6 +1158,9 @@ public class Configuration {
     }
   }
 
+  /**
+   * 解析所有结果集
+   */
   private void parsePendingResultMaps() {
     if (incompleteResultMaps.isEmpty()) {
       return;
@@ -925,6 +1170,7 @@ public class Configuration {
       IncompleteElementException ex = null;
       do {
         resolved = false;
+        // 对一个个的结果集节点进行解析,解析完后移除
         Iterator<ResultMapResolver> iterator = incompleteResultMaps.iterator();
         while (iterator.hasNext()) {
           try {
@@ -936,6 +1182,7 @@ public class Configuration {
           }
         }
       } while (resolved);
+      // 只要有一个结果集节点未解析，就抛异常
       if (!incompleteResultMaps.isEmpty() && ex != null) {
         // At least one result map is unresolvable.
         throw ex;
@@ -945,16 +1192,21 @@ public class Configuration {
 
   /**
    * Extracts namespace from fully qualified statement id.
-   *
+   * 从完全限定的语句id中提取命名空间
    * @param statementId
    *          the statement id
    * @return namespace or null when id does not contain period.
    */
   protected String extractNamespace(String statementId) {
-    int lastPeriod = statementId.lastIndexOf('.');
+    int lastPeriod = statementId.lastIndexOf('.'); /* 语句id中最后一个"."所在的索引 */
+    /* 将语句id的最后一个字符串取出 */
     return lastPeriod > 0 ? statementId.substring(0, lastPeriod) : null;
   }
 
+  /**
+   * 全局检查有区别的嵌套结果集
+   * @param rm
+   */
   // Slow but a one time cost. A better solution is welcome.
   protected void checkGloballyForDiscriminatedNestedResultMaps(ResultMap rm) {
     if (rm.hasNestedResultMaps()) {
@@ -973,6 +1225,10 @@ public class Configuration {
     }
   }
 
+  /**
+   * 本地检查有区别的嵌套结果集
+   * @param rm
+   */
   // Slow but a one time cost. A better solution is welcome.
   protected void checkLocallyForDiscriminatedNestedResultMaps(ResultMap rm) {
     if (!rm.hasNestedResultMaps() && rm.getDiscriminator() != null) {
@@ -989,6 +1245,11 @@ public class Configuration {
     }
   }
 
+  /**
+   * 继承自HashMap的StrictMap,比HashMap更严格
+   * StrictMap新增了一个key，作为key-value的key
+   * @param <V>
+   */
   protected static class StrictMap<V> extends HashMap<String, V> {
 
     private static final long serialVersionUID = -4950446264854982944L;
@@ -1039,12 +1300,15 @@ public class Configuration {
     @Override
     @SuppressWarnings("unchecked")
     public V put(String key, V value) {
+      // 如果集合中已经有传入的键值对的key,就抛出异常
       if (containsKey(key)) {
         throw new IllegalArgumentException(name + " already contains value for " + key
             + (conflictMessageProducer == null ? "" : conflictMessageProducer.apply(super.get(key), value)));
       }
+      // 如果key中包含".",表示是一个长名字,我们需要获取它的短名
       if (key.contains(".")) {
         final String shortKey = getShortName(key);
+        // 如果短名不存在，就把value作为值加入集合;如果短名已经存在，就将短名强转为传入value的类型，用来获取时抛异常
         if (super.get(shortKey) == null) {
           super.put(shortKey, value);
         } else {
@@ -1079,6 +1343,11 @@ public class Configuration {
       }
     }
 
+    /**
+     * 获取最后一部分的字符串
+     * @param key
+     * @return
+     */
     private String getShortName(String key) {
       final String[] keyParts = key.split("\\.");
       return keyParts[keyParts.length - 1];

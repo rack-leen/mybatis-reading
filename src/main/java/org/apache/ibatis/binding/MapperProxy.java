@@ -38,12 +38,18 @@ public class MapperProxy<T> implements InvocationHandler, Serializable {
   private static final long serialVersionUID = -4724728412955527868L;
   private static final int ALLOWED_MODES = MethodHandles.Lookup.PRIVATE | MethodHandles.Lookup.PROTECTED
       | MethodHandles.Lookup.PACKAGE | MethodHandles.Lookup.PUBLIC;
-  private static final Constructor<Lookup> lookupConstructor;
-  private static final Method privateLookupInMethod;
+  private static final Constructor<Lookup> lookupConstructor; /* jdk8 */
+  private static final Method privateLookupInMethod; /* jdk8中没有这个方法,jdk9才有 */
   private final SqlSession sqlSession;
   private final Class<T> mapperInterface;
   private final Map<Method, MapperMethodInvoker> methodCache;
 
+  /**
+   * MapperProxy工厂将创建一个mapper对象需要的参数传入
+   * @param sqlSession 数据库连接
+   * @param mapperInterface mapper接口
+   * @param methodCache mapper接口中的所有方法以及对应的调用反射调用方法的接口
+   */
   public MapperProxy(SqlSession sqlSession, Class<T> mapperInterface, Map<Method, MapperMethodInvoker> methodCache) {
     this.sqlSession = sqlSession;
     this.mapperInterface = mapperInterface;
@@ -51,6 +57,7 @@ public class MapperProxy<T> implements InvocationHandler, Serializable {
   }
 
   static {
+    // jdk 8 中没有这个方法
     Method privateLookupIn;
     try {
       privateLookupIn = MethodHandles.class.getMethod("privateLookupIn", Class.class, MethodHandles.Lookup.class);
@@ -63,7 +70,9 @@ public class MapperProxy<T> implements InvocationHandler, Serializable {
     if (privateLookupInMethod == null) {
       // JDK 1.8
       try {
+        // 获取public构造器
         lookup = MethodHandles.Lookup.class.getDeclaredConstructor(Class.class, int.class);
+        // 将这个构造器设置为可访问
         lookup.setAccessible(true);
       } catch (NoSuchMethodException e) {
         throw new IllegalStateException(
@@ -76,6 +85,14 @@ public class MapperProxy<T> implements InvocationHandler, Serializable {
     lookupConstructor = lookup;
   }
 
+  /**
+   * 动态代理调用合适的方法
+   * @param proxy 代理类
+   * @param method 方法
+   * @param args 方法参数
+   * @return
+   * @throws Throwable
+   */
   @Override
   public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
     try {

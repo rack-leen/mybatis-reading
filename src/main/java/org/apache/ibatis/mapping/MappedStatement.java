@@ -29,6 +29,7 @@ import org.apache.ibatis.scripting.LanguageDriver;
 import org.apache.ibatis.session.Configuration;
 
 /**
+ * sql映射mapper.xml语句对象
  * @author Clinton Begin
  */
 public final class MappedStatement {

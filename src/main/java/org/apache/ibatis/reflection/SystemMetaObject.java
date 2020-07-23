@@ -21,12 +21,14 @@ import org.apache.ibatis.reflection.wrapper.DefaultObjectWrapperFactory;
 import org.apache.ibatis.reflection.wrapper.ObjectWrapperFactory;
 
 /**
+ * 系统元数据对象,可以创建一个默认元数据对象
  * @author Clinton Begin
  */
 public final class SystemMetaObject {
 
-  public static final ObjectFactory DEFAULT_OBJECT_FACTORY = new DefaultObjectFactory();
-  public static final ObjectWrapperFactory DEFAULT_OBJECT_WRAPPER_FACTORY = new DefaultObjectWrapperFactory();
+  public static final ObjectFactory DEFAULT_OBJECT_FACTORY = new DefaultObjectFactory(); /* 默认对象工厂 */
+  public static final ObjectWrapperFactory DEFAULT_OBJECT_WRAPPER_FACTORY = new DefaultObjectWrapperFactory(); /* 默认对象包装器工厂 */
+  /* 创建一个默认空元数据对象 */
   public static final MetaObject NULL_META_OBJECT = MetaObject.forObject(NullObject.class, DEFAULT_OBJECT_FACTORY, DEFAULT_OBJECT_WRAPPER_FACTORY, new DefaultReflectorFactory());
 
   private SystemMetaObject() {

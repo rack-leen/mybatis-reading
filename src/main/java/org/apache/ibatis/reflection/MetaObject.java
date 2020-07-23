@@ -28,15 +28,18 @@ import org.apache.ibatis.reflection.wrapper.ObjectWrapper;
 import org.apache.ibatis.reflection.wrapper.ObjectWrapperFactory;
 
 /**
+ * 元数据对象(MetaObject)实际上就是提供 类|集合|Map 的一种自动识别的访问形式.是一种反射工具,针对类实例MetaClass针对类的元信息
+ * 元数据对象构造器是私有的，对外只提供forObject静态方法来创建对象
+ * 参考: https://www.jianshu.com/p/ab9a6ef2c96c
  * @author Clinton Begin
  */
 public class MetaObject {
 
-  private final Object originalObject;
-  private final ObjectWrapper objectWrapper;
-  private final ObjectFactory objectFactory;
-  private final ObjectWrapperFactory objectWrapperFactory;
-  private final ReflectorFactory reflectorFactory;
+  private final Object originalObject; /* 来源对象 */
+  private final ObjectWrapper objectWrapper; /* 对象包装器 */
+  private final ObjectFactory objectFactory; /* 对象工厂 */
+  private final ObjectWrapperFactory objectWrapperFactory; /* 对象包装器工厂 */
+  private final ReflectorFactory reflectorFactory; /* 反射工厂 */
 
   private MetaObject(Object object, ObjectFactory objectFactory, ObjectWrapperFactory objectWrapperFactory, ReflectorFactory reflectorFactory) {
     this.originalObject = object;
@@ -44,15 +47,16 @@ public class MetaObject {
     this.objectWrapperFactory = objectWrapperFactory;
     this.reflectorFactory = reflectorFactory;
 
-    if (object instanceof ObjectWrapper) {
+
+    if (object instanceof ObjectWrapper) {/* 如果传入的对象是一个对象包装器 */
       this.objectWrapper = (ObjectWrapper) object;
-    } else if (objectWrapperFactory.hasWrapperFor(object)) {
+    } else if (objectWrapperFactory.hasWrapperFor(object)) { /* 传入的object是否有包装器 */
       this.objectWrapper = objectWrapperFactory.getWrapperFor(this, object);
-    } else if (object instanceof Map) {
+    } else if (object instanceof Map) { /* object是否是一个map */
       this.objectWrapper = new MapWrapper(this, (Map) object);
-    } else if (object instanceof Collection) {
+    } else if (object instanceof Collection) { /* object是否是一个集合 */
       this.objectWrapper = new CollectionWrapper(this, (Collection) object);
-    } else {
+    } else { /* 否则object就是一个普通Bean */
       this.objectWrapper = new BeanWrapper(this, object);
     }
   }
