@@ -46,6 +46,7 @@ import org.apache.ibatis.session.SqlSession;
  */
 public class MapperMethod {
 
+  // 内部类，封装了
   private final SqlCommand command;
   private final MethodSignature method;
 
@@ -216,10 +217,13 @@ public class MapperMethod {
 
   }
 
+  /**
+   * 封装了具体执行的操作
+   */
   public static class SqlCommand {
 
-    private final String name;
-    private final SqlCommandType type;
+    private final String name; /* xml标签上的sql命令名（insert,update,delete,select） */
+    private final SqlCommandType type; /* sql命令类型 */
 
     public SqlCommand(Configuration configuration, Class<?> mapperInterface, Method method) {
       final String methodName = method.getName();
@@ -235,8 +239,8 @@ public class MapperMethod {
               + mapperInterface.getName() + "." + methodName);
         }
       } else {
-        name = ms.getId();
-        type = ms.getSqlCommandType();
+        name = ms.getId(); /* 获取解析后的xml标签id(select等) */
+        type = ms.getSqlCommandType(); /* 获取这些标签在sql中代表的操作类型 */
         if (type == SqlCommandType.UNKNOWN) {
           throw new BindingException("Unknown execution method for: " + name);
         }
@@ -251,16 +255,30 @@ public class MapperMethod {
       return type;
     }
 
+    /**
+     * 将xml标签解析为sql语句对象
+     * @param mapperInterface mapper.xml对应的mapper接口
+     * @param methodName xml标签上的方法名
+     * @param declaringClass 方法对应的类(mapper接口类，和mapperInterface可能不同，因为这个类可能是mapperInterface的子类)
+     * @param configuration 配置对象，提供xml配置解析。配置对象在加载的时候就将xml文件中的标签解析为各种对应的对象存放到对象池中，我们只需要通过配置类指定的规则从对象池拿取
+     * @return
+     */
     private MappedStatement resolveMappedStatement(Class<?> mapperInterface, String methodName,
         Class<?> declaringClass, Configuration configuration) {
+      // mapper接口名+方法名，得到完整的全局唯一的sql语句id
       String statementId = mapperInterface.getName() + "." + methodName;
+      // 判断全局缓存中是否存在sql语句id对应的sql语句对象,如果有就从对象池中提取出来返回
       if (configuration.hasStatement(statementId)) {
         return configuration.getMappedStatement(statementId);
-      } else if (mapperInterface.equals(declaringClass)) {
+      } else if (mapperInterface.equals(declaringClass)) { /* 如果传入的这个接口类就是该方法的声明类，但是又没有找到sql语句对象，就直接返回空 */
         return null;
       }
+
+      // 如果我们在父类的mapper接口找不到对应的方法，可以到mapper接口类的子类找
       for (Class<?> superInterface : mapperInterface.getInterfaces()) {
+        // 如果方法的声明类时继承自mapperInterface的，表示该方法有对应的xml标签,将这个方法的声明类作为这个方法的mapper接口
         if (declaringClass.isAssignableFrom(superInterface)) {
+          // 重新解析xml，获取sql语句对象
           MappedStatement ms = resolveMappedStatement(superInterface, methodName,
               declaringClass, configuration);
           if (ms != null) {
@@ -272,18 +290,21 @@ public class MapperMethod {
     }
   }
 
+  /**
+   * 方法签名 封装了接口中方法的参数类型，返回值类型
+   */
   public static class MethodSignature {
 
-    private final boolean returnsMany;
-    private final boolean returnsMap;
-    private final boolean returnsVoid;
-    private final boolean returnsCursor;
-    private final boolean returnsOptional;
-    private final Class<?> returnType;
+    private final boolean returnsMany; /* 返回多条结果 */
+    private final boolean returnsMap; /* 返回值是Map */
+    private final boolean returnsVoid; /* 返回值是void */
+    private final boolean returnsCursor; /* 返回sql游标 */
+    private final boolean returnsOptional; /* 返回Optional */
+    private final Class<?> returnType; /* 返回值类型 */
     private final String mapKey;
-    private final Integer resultHandlerIndex;
-    private final Integer rowBoundsIndex;
-    private final ParamNameResolver paramNameResolver;
+    private final Integer resultHandlerIndex; /* resultHandler类型参数的位置 */
+    private final Integer rowBoundsIndex; /* rowBound类型参数的位置 */
+    private final ParamNameResolver paramNameResolver; /* 参数名解析器 */
 
     public MethodSignature(Configuration configuration, Class<?> mapperInterface, Method method) {
       Type resolvedReturnType = TypeParameterResolver.resolveReturnType(method, mapperInterface);
