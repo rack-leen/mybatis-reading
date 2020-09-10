@@ -38,21 +38,57 @@ import org.apache.ibatis.io.Resources;
  */
 public class UnpooledDataSource implements DataSource {
 
+  /**
+   * 数据库驱动类加载器
+   */
   private ClassLoader driverClassLoader;
+  /**
+   * 数据库驱动属性
+   */
   private Properties driverProperties;
+
+  /**
+   * 将所有存在的数据库驱动注册
+   */
   private static Map<String, Driver> registeredDrivers = new ConcurrentHashMap<>();
 
+  /**
+   * 驱动名
+   */
   private String driver;
+  /**
+   * 数据库地址
+   */
   private String url;
+  /**
+   * 数据库名
+   */
   private String username;
+  /**
+   * 数据库密码
+   */
   private String password;
 
+  /**
+   * 是否自动提交
+   */
   private Boolean autoCommit;
+  /**
+   * 默认事务传播特性级别
+   */
   private Integer defaultTransactionIsolationLevel;
+  /**
+   * 默认网络超时时间
+   */
   private Integer defaultNetworkTimeout;
 
+  /**
+   * 类加载后自动加载static代码块
+   */
   static {
+    /* 从驱动管理器中获取所有存在的数据库驱动 */
     Enumeration<Driver> drivers = DriverManager.getDrivers();
+    /* 如果驱动存在多个，就将所有驱动一起注册，以map形式存储 */
     while (drivers.hasMoreElements()) {
       Driver driver = drivers.nextElement();
       registeredDrivers.put(driver.getClass().getName(), driver);

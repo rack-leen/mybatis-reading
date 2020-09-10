@@ -29,6 +29,8 @@ import org.apache.ibatis.type.TypeHandler;
 import org.apache.ibatis.type.TypeHandlerRegistry;
 
 /**
+ * 基础构建器
+ * 主要用来解析mapper配置中类型别名注册器对象，类型处理器对象
  * @author Clinton Begin
  */
 public abstract class BaseBuilder {

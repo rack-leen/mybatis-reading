@@ -91,18 +91,31 @@ import org.apache.ibatis.type.TypeHandler;
 import org.apache.ibatis.type.UnknownTypeHandler;
 
 /**
+ * mapper接口类中的方法注解构建
  * @author Clinton Begin
  * @author Kazuki Shimizu
  */
 public class MapperAnnotationBuilder {
 
+  /**
+   * 将语句需要的所有注解存放到集合中
+   */
   private static final Set<Class<? extends Annotation>> statementAnnotationTypes = Stream
       .of(Select.class, Update.class, Insert.class, Delete.class, SelectProvider.class, UpdateProvider.class,
           InsertProvider.class, DeleteProvider.class)
       .collect(Collectors.toSet());
 
+  /**
+   * mybatis配置对象
+   */
   private final Configuration configuration;
+  /**
+   * mapper构建助手
+   */
   private final MapperBuilderAssistant assistant;
+  /**
+   * 类类型
+   */
   private final Class<?> type;
 
   public MapperAnnotationBuilder(Configuration configuration, Class<?> type) {
