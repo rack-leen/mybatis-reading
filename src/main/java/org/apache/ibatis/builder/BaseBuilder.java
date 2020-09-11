@@ -34,10 +34,23 @@ import org.apache.ibatis.type.TypeHandlerRegistry;
  * @author Clinton Begin
  */
 public abstract class BaseBuilder {
+  /**
+   * mybatis配置对象，这里用来获取类型别名注册器对象和类型处理注册器对象
+   */
   protected final Configuration configuration;
+  /**
+   * 类型别名注册,注册有所有的类型别名,这里委托它解析类型别名
+   */
   protected final TypeAliasRegistry typeAliasRegistry;
+  /**
+   * 类型处理器注册,注册有所有处理类型别名的处理器,这里委托它来获取类型处理器
+   */
   protected final TypeHandlerRegistry typeHandlerRegistry;
 
+  /**
+   * 配置对象是mybatis大部分对象的源对象，类型别名注册和类型处理器注册对象都是从配置对象中拿的
+   * @param configuration
+   */
   public BaseBuilder(Configuration configuration) {
     this.configuration = configuration;
     this.typeAliasRegistry = this.configuration.getTypeAliasRegistry();
@@ -48,6 +61,12 @@ public abstract class BaseBuilder {
     return configuration;
   }
 
+  /**
+   * 解析正则表达式
+   * @param regex 正则表达式
+   * @param defaultValue
+   * @return
+   */
   protected Pattern parseExpression(String regex, String defaultValue) {
     return Pattern.compile(regex == null ? defaultValue : regex);
   }
@@ -65,6 +84,11 @@ public abstract class BaseBuilder {
     return new HashSet<>(Arrays.asList(value.split(",")));
   }
 
+  /**
+   * 将类型别名解析为JdbcType类型
+   * @param alias
+   * @return
+   */
   protected JdbcType resolveJdbcType(String alias) {
     if (alias == null) {
       return null;
@@ -98,18 +122,31 @@ public abstract class BaseBuilder {
     }
   }
 
+  /**
+   * 通过类别名创建一个类实例
+   * @param alias
+   * @return
+   */
   protected Object createInstance(String alias) {
+    // 将别名解析为一个class实例
     Class<?> clazz = resolveClass(alias);
     if (clazz == null) {
       return null;
     }
     try {
+      // 通过class实例反射出类别名对应的类对象
       return clazz.getDeclaredConstructor().newInstance();
     } catch (Exception e) {
       throw new BuilderException("Error creating instance. Cause: " + e, e);
     }
   }
 
+  /**
+   * 对resolveAlias方法的包装
+   * @param alias
+   * @param <T>
+   * @return
+   */
   protected <T> Class<? extends T> resolveClass(String alias) {
     if (alias == null) {
       return null;
@@ -121,10 +158,17 @@ public abstract class BaseBuilder {
     }
   }
 
+  /**
+   * 解析处理器对象
+   * @param javaType
+   * @param typeHandlerAlias
+   * @return
+   */
   protected TypeHandler<?> resolveTypeHandler(Class<?> javaType, String typeHandlerAlias) {
     if (typeHandlerAlias == null) {
       return null;
     }
+    // 通过类型处理器别名获取对象
     Class<?> type = resolveClass(typeHandlerAlias);
     if (type != null && !TypeHandler.class.isAssignableFrom(type)) {
       throw new BuilderException("Type " + type.getName() + " is not a valid TypeHandler because it does not implement TypeHandler interface");
